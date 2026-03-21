@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 from config import Config
 from extensions import db, mongo
 from flask_restful import Api
@@ -10,6 +11,8 @@ print("Loaded resource:", OrganizationRegisterResource)
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
 
     db.init_app(app)
     mongo.init_app(app)

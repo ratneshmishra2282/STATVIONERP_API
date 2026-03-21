@@ -1,8 +1,9 @@
 Flask
 Flask-SQLAlchemy
 Flask-PyMongo
+Flask-Cors
 pymysql
 requests
 Flask-RESTful
 PyJWT
-jwt
+python-dotenv

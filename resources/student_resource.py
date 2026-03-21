@@ -1,7 +1,5 @@
 from flask_restful import Resource
 from flask import request
-from sqlalchemy.sql.functions import current_user
-
 from models.student import Student
 from extensions import db, mongo
 from bson import ObjectId
@@ -52,8 +50,8 @@ class StudentListResource(Resource):
     def post(self):
 
         data = request.json
-        user = get_jwt_identity()
-        org_id = user["organization_id"]
+        current_user = request.user
+        org_id = current_user.organization_id
 
         student = Student(
             organization_id=org_id,
@@ -67,15 +65,18 @@ class StudentListResource(Resource):
         db.session.add(student)
         db.session.commit()
 
-        mongo_data = {
-            "sql_student_id": student.id,
-            "extra_data": data.get("extra_data", {})
-        }
+        try:
+            mongo_data = {
+                "sql_student_id": student.id,
+                "extra_data": data.get("extra_data", {})
+            }
 
-        result = mongo.db.students_profile.insert_one(mongo_data)
+            result = mongo.db.students_profile.insert_one(mongo_data)
 
-        student.mongo_id = str(result.inserted_id)
-        db.session.commit()
+            student.mongo_id = str(result.inserted_id)
+            db.session.commit()
+        except Exception:
+            pass
 
         return {"student_id": student.id}, 201
 
@@ -121,3 +122,77 @@ class StudentDetailResource(Resource):
             },
             "extra_data": extra_data
         }
+
+    @login_required
+    def put(self, student_id):
+        current_user = request.user
+        org_id = current_user.organization_id
+
+        student = Student.query.filter_by(
+            id=student_id,
+            organization_id=org_id
+        ).first()
+
+        if not student:
+            return {"error": "Student not found"}, 404
+
+        data = request.json
+
+        if "name" in data:
+            student.name = data["name"]
+        if "class_name" in data:
+            student.class_name = data["class_name"]
+        if "phone" in data:
+            student.phone = data["phone"]
+        if "total_fee" in data:
+            student.total_fee = data["total_fee"]
+            student.due_fee = data["total_fee"] - student.paid_fee
+
+        db.session.commit()
+
+        try:
+            extra_data = data.get("extra_data", {})
+            if extra_data:
+                if student.mongo_id:
+                    mongo.db.students_profile.update_one(
+                        {"_id": ObjectId(student.mongo_id)},
+                        {"$set": {"extra_data": extra_data}}
+                    )
+                else:
+                    mongo_data = {
+                        "sql_student_id": student.id,
+                        "extra_data": extra_data
+                    }
+                    result = mongo.db.students_profile.insert_one(mongo_data)
+                    student.mongo_id = str(result.inserted_id)
+                    db.session.commit()
+        except Exception:
+            pass
+
+        return {"message": "Student updated successfully", "student_id": student.id}
+
+    @login_required
+    def delete(self, student_id):
+        current_user = request.user
+        org_id = current_user.organization_id
+
+        student = Student.query.filter_by(
+            id=student_id,
+            organization_id=org_id
+        ).first()
+
+        if not student:
+            return {"error": "Student not found"}, 404
+
+        try:
+            if student.mongo_id:
+                mongo.db.students_profile.delete_one(
+                    {"_id": ObjectId(student.mongo_id)}
+                )
+        except Exception:
+            pass
+
+        db.session.delete(student)
+        db.session.commit()
+
+        return {"message": "Student deleted successfully"}

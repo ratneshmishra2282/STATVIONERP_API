@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py --version)",
+      "Bash(where python:*)",
+      "Bash(py -m venv venv)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pip install:*)",
+      "Bash(py application.py)",
+      "Bash(mysql --version)"
+    ]
+  }
+}
