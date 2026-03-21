@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+Flask-PyMongo
+pymysql
+requests
+Flask-RESTful
+PyJWT
+jwt
